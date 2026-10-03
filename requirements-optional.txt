@@ -1,0 +1,3 @@
+# Install to use Postgres and Qdrant instead of the SQLite + in-process defaults
+psycopg[binary]>=3.1
+qdrant-client>=1.9

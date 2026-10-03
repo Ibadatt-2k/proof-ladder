@@ -1,0 +1,53 @@
+name: eval-gate
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test-and-gate:
+    runs-on: ubuntu-latest
+    env:
+      HAS_LLM_KEY: ${{ secrets.LLM_API_KEY != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+
+      - name: Unit tests + regression suite (every analyst correction must stay fixed)
+        run: pytest -q
+
+      - name: Holdout evaluation gate (offline reasoner)
+        run: python -m eval.run_eval --n 600
+
+      # Optional: gate a real model too. Add LLM_API_KEY / LLM_MODEL / LLM_PROVIDER as repo secrets.
+      - name: Holdout evaluation gate (LLM provider)
+        if: env.HAS_LLM_KEY == 'true'
+        env:
+          LLM_PROVIDER: ${{ secrets.LLM_PROVIDER }}
+          LLM_MODEL: ${{ secrets.LLM_MODEL }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+        run: python -m eval.run_eval --n 120
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-report
+          path: eval/report.json
+
+  deploy:
+    needs: test-and-gate
+    if: github.ref == 'refs/heads/main' && vars.GCP_PROJECT != ''
+    runs-on: ubuntu-latest
+    permissions: {contents: read, id-token: write}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - run: GCP_PROJECT=${{ vars.GCP_PROJECT }} bash deploy/cloudrun.sh

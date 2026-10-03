@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proof Ladder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="/static/vue.global.prod.js"></script>
+<style>
+:root{--bg:#0d1117;--panel:#141a22;--panel2:#1a222d;--line:#263040;--text:#dbe3ee;--muted:#8a97a8;--accent:#5eb1ff;
+--good:#3fbf7f;--warn:#e3b341;--bad:#f0605d;--inf:#b392f0;--gap:#8a97a8;--mono:'IBM Plex Mono',ui-monospace,monospace}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 'IBM Plex Sans',system-ui,sans-serif}
+header{display:flex;align-items:center;gap:16px;padding:14px 24px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5;flex-wrap:wrap}
+h1{font-size:17px;margin:0;font-weight:600;letter-spacing:.2px}h1 span{color:var(--accent)}
+.sub{color:var(--muted);font-size:12.5px}.spacer{flex:1}
+.pill{font:500 11.5px var(--mono);padding:3px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+button{font:500 13px 'IBM Plex Sans';background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:6px 12px;cursor:pointer}
+button:hover{border-color:var(--accent)}button.primary{background:var(--accent);color:#06131f;border-color:var(--accent)}button:disabled{opacity:.45;cursor:not-allowed}
+main{padding:20px 24px;max-width:1400px;margin:0 auto}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(520px,1fr));gap:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+.card h2{margin:0 0 2px;font-size:15px;text-transform:capitalize}.card h3{font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin:16px 0 8px;font-weight:500}
+.ladder{display:flex;gap:6px;margin:12px 0}.rung{flex:1;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel2);font-size:12.5px}
+.rung b{display:block;font-size:13px}.rung small{color:var(--muted)}.rung.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}.rung.rec{border-style:dashed;border-color:var(--warn)}
+.tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.tile{background:var(--panel2);border-radius:6px;padding:8px 10px}
+.tile .v{font:500 18px var(--mono)}.tile .l{color:var(--muted);font-size:11.5px}
+.bad{color:var(--bad)}.good{color:var(--good)}.warn{color:var(--warn)}
+.banner{margin-top:12px;padding:10px 12px;border-radius:6px;border:1px solid var(--warn);background:rgba(227,179,65,.08);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.blocking{margin:6px 0 0;padding-left:18px;color:var(--muted);font-size:12.5px}
+svg text{fill:var(--muted);font:10px var(--mono)}
+table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;color:var(--muted);font-weight:500;font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;padding:6px 8px;border-bottom:1px solid var(--line)}
+td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}tr.row{cursor:pointer}tr.row:hover td{background:var(--panel2)}
+.v-malicious{color:var(--bad)}.v-benign{color:var(--good)}.v-needs_human{color:var(--warn)}
+.o{font:500 11px var(--mono);padding:2px 6px;border-radius:4px}.o-agree{background:rgba(63,191,127,.15);color:var(--good)}.o-disagree{background:rgba(240,96,93,.15);color:var(--bad)}.o-deferred{background:rgba(227,179,65,.15);color:var(--warn)}
+.filters{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}select,input,textarea{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font:13px 'IBM Plex Sans'}
+.drawer{position:fixed;top:0;right:0;height:100vh;width:min(760px,100vw);background:var(--panel);border-left:1px solid var(--line);overflow:auto;padding:20px;z-index:10;box-shadow:-20px 0 40px rgba(0,0,0,.4)}
+.grade{font:500 10.5px var(--mono);padding:2px 6px;border-radius:4px;text-transform:uppercase;margin-right:6px}
+.g-confirmed{background:rgba(63,191,127,.15);color:var(--good)}.g-inferred{background:rgba(179,146,240,.15);color:var(--inf)}.g-gap{background:rgba(138,151,168,.15);color:var(--gap)}
+.finding{padding:8px 0;border-bottom:1px solid var(--line)}.finding .why{color:var(--muted);font-size:12.5px;margin-top:2px}
+.ref{font:11px var(--mono);color:var(--accent)}
+.step{border:1px solid var(--line);border-radius:6px;margin:6px 0;background:var(--panel2)}.step summary{padding:6px 10px;cursor:pointer;font:12px var(--mono)}
+pre{margin:0;padding:8px 10px;font:11.5px/1.45 var(--mono);white-space:pre-wrap;word-break:break-word;color:#c3cfdd;border-top:1px solid var(--line)}
+.viol{color:var(--warn);font-size:12.5px}.kv{display:grid;grid-template-columns:140px 1fr;gap:4px 12px;font-size:13px}.kv div:nth-child(odd){color:var(--muted)}
+.events li{margin:6px 0;font-size:13px}.muted{color:var(--muted)}
+@media (max-width:640px){.grid2{grid-template-columns:1fr}.tiles{grid-template-columns:repeat(2,1fr)}main{padding:16px}}
+</style>
+</head>
+<body>
+<div id="app">
+<header>
+  <div><h1>Proof <span>Ladder</span></h1><div class="sub">AI triage earns autonomy per alert type, with evidence. Shadow mode against analyst verdicts.</div></div>
+  <div class="spacer"></div>
+  <span class="pill">provider: {{ s.provider }}</span>
+  <span class="pill">{{ s.alerts }} alerts</span>
+  <span class="pill">{{ s.corrections }} corrections</span>
+  <button class="primary" :disabled="busy || s.readonly" @click="replay(100)">{{ busy ? 'Triaging...' : 'Replay 100 alerts' }}</button>
+</header>
+<main>
+  <div class="grid2">
+    <div class="card" v-for="t in s.types" :key="t.alert_type">
+      <h2>{{ t.alert_type }} alerts</h2>
+      <div class="sub">Last {{ t.metrics.total }} investigations</div>
+      <div class="ladder">
+        <div v-for="l in levels" :key="l.k" class="rung" :class="{on: t.level===l.k, rec: t.recommendation===l.k}">
+          <b>{{ l.name }}</b><small>{{ l.desc }}</small>
+        </div>
+      </div>
+      <div class="tiles">
+        <div class="tile"><div class="v">{{ pct(t.metrics.agreement_rate) }}</div><div class="l">agreement</div></div>
+        <div class="tile"><div class="v" :class="t.next && t.metrics.wilson_lb >= t.next.criteria.min_lb ? 'good':'warn'">{{ pct(t.metrics.wilson_lb) }}</div><div class="l">95% lower bound</div></div>
+        <div class="tile"><div class="v" :class="t.metrics.critical_misses ? 'bad':'good'">{{ t.metrics.critical_misses }}</div><div class="l">critical misses</div></div>
+        <div class="tile"><div class="v">{{ t.metrics.false_alarms }}</div><div class="l">false alarms</div></div>
+        <div class="tile"><div class="v">{{ pct(t.metrics.deferral_rate) }}</div><div class="l">deferred</div></div>
+      </div>
+      <h3>Agreement lower bound over time</h3>
+      <svg :viewBox="'0 0 520 120'" width="100%" height="120" preserveAspectRatio="none" v-if="tl[t.alert_type]">
+        <line x1="30" x2="515" :y1="y(t.next ? t.next.criteria.min_lb : .98)" :y2="y(t.next ? t.next.criteria.min_lb : .98)" stroke="var(--warn)" stroke-dasharray="4 4"/>
+        <text x="0" :y="y(t.next ? t.next.criteria.min_lb : .98)+3">{{ pct(t.next ? t.next.criteria.min_lb : .98, 0) }}</text>
+        <text x="0" :y="y(.8)+3">80%</text><text x="0" :y="y(1)+8">100%</text>
+        <polyline fill="none" stroke="var(--accent)" stroke-width="2" :points="poly(tl[t.alert_type])"/>
+      </svg>
+      <div v-if="t.recommendation" class="banner">
+        <span>Criteria for <b>{{ name(t.recommendation) }}</b> are met.</span>
+        <div class="spacer"></div>
+        <button @click="report(t.alert_type)">Evidence report</button>
+        <button class="primary" :disabled="s.readonly" @click="approve(t.alert_type)">Approve promotion</button>
+      </div>
+      <div v-else-if="t.next">
+        <h3>Blocking promotion to {{ name(t.next.level) }}</h3>
+        <ul class="blocking"><li v-for="b in t.next.blocking">{{ b }}</li></ul>
+        <button style="margin-top:8px" @click="report(t.alert_type)">Evidence report</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h2>Investigations</h2>
+    <div class="filters">
+      <select v-model="f.alert_type" @change="load"><option value="">all types</option><option>phishing</option><option>login</option></select>
+      <select v-model="f.outcome" @change="load"><option value="">all outcomes</option><option>agree</option><option>disagree</option><option>deferred</option></select>
+      <span class="muted" style="align-self:center;font-size:12.5px">Tip: filter to "disagree", open one, and correct it. Similar alerts will use your precedent.</span>
+    </div>
+    <table>
+      <thead><tr><th>ID</th><th>Alert</th><th>AI</th><th>Analyst</th><th>Outcome</th><th>Mode / action</th><th></th></tr></thead>
+      <tbody>
+        <tr class="row" v-for="r in rows" :key="r.id" @click="open(r.id)">
+          <td class="muted" style="font-family:var(--mono)">{{ r.external_id }}</td>
+          <td>{{ r.headline }}<div class="muted" style="font-size:12px">{{ r.summary }}</div></td>
+          <td :class="'v-'+r.ai_verdict">{{ r.ai_verdict }}</td>
+          <td :class="'v-'+r.human_verdict">{{ r.human_verdict }}</td>
+          <td><span class="o" :class="'o-'+r.outcome">{{ r.outcome }}</span><span v-if="r.critical_miss" class="bad"> critical</span></td>
+          <td class="muted">{{ r.autonomy }} / {{ r.action }}</td>
+          <td class="muted" style="font-size:12px"><span v-if="r.used_precedent">precedent </span><span v-if="r.corrected">corrected </span><span v-if="r.violations" class="warn">{{ r.violations }} rule</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="grid2" style="margin-top:16px">
+    <div class="card" v-for="t in s.types" :key="'e'+t.alert_type">
+      <h2>{{ t.alert_type }} ladder history</h2>
+      <ul class="events"><li v-for="e in ev[t.alert_type]" :key="e.id"><b :class="e.event==='demote'?'bad':e.event==='promote'?'good':'warn'">{{ e.event }}</b> {{ name(e.from) }} to {{ name(e.to) }} <span class="muted">by {{ e.actor }}: {{ e.reason }}</span></li>
+      <li v-if="!(ev[t.alert_type]||[]).length" class="muted">No changes yet.</li></ul>
+    </div>
+  </div>
+</main>
+
+<div class="drawer" v-if="d">
+  <div style="display:flex;align-items:center;gap:10px"><h2 style="margin:0;font-size:16px">{{ d.external_id }}</h2><span class="o" :class="'o-'+d.outcome">{{ d.outcome }}</span><div class="spacer"></div><button @click="d=null">Close</button></div>
+  <p>{{ d.summary }}</p>
+  <div class="kv">
+    <div>AI verdict</div><div :class="'v-'+d.ai_verdict">{{ d.ai_verdict }} <span class="muted" v-if="d.proposed_verdict!==d.ai_verdict">(proposed {{ d.proposed_verdict }}, changed by grading rules)</span></div>
+    <div>Analyst verdict</div><div :class="'v-'+d.human_verdict">{{ d.human_verdict }}</div>
+    <div>Autonomy / action</div><div>{{ d.autonomy }} / {{ d.action }}</div>
+    <div>Scenario</div><div class="muted">{{ d.scenario }} (generator label, hidden from the agent)</div>
+    <div>Provider / latency</div><div>{{ d.provider }} / {{ d.latency_ms }} ms / ${{ d.cost_usd }}</div>
+  </div>
+  <div v-if="d.violations.length"><h3 class="sub" style="margin-top:14px">Grading rule enforcement</h3><div class="viol" v-for="v in d.violations">{{ v }}</div></div>
+  <h3 class="sub" style="margin-top:14px">Findings</h3>
+  <div class="finding" v-for="fd in d.findings"><span class="grade" :class="'g-'+fd.grade">{{ fd.grade }}</span>{{ fd.claim }}
+    <span class="ref" v-for="r in fd.evidence_refs"> [{{ r }}]</span>
+    <div class="why" v-if="fd.reasoning">{{ fd.reasoning }}</div></div>
+  <h3 class="sub" style="margin-top:14px">Audit trail</h3>
+  <details class="step" v-for="st in d.steps" :key="st.ref"><summary><span class="ref">{{ st.ref }}</span> {{ st.kind }} {{ st.tool }} <span class="muted">{{ argstr(st.input) }}</span><span v-if="!st.ok" class="bad"> error</span></summary><pre>{{ JSON.stringify(st.output, null, 2) }}</pre></details>
+  <h3 class="sub" style="margin-top:14px">Alert payload</h3>
+  <pre style="border:1px solid var(--line);border-radius:6px">{{ JSON.stringify(d.payload, null, 2) }}</pre>
+  <div class="card" style="margin-top:14px" v-if="!s.readonly">
+    <b>Correct this verdict</b>
+    <div class="sub">Stored in memory for similar alerts and exported as a regression test.</div>
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+      <select v-model="c.verdict"><option>benign</option><option>malicious</option></select>
+      <input v-model="c.note" placeholder="Analyst note, e.g. Zscaler egress, not travel" style="flex:1;min-width:200px">
+      <button class="primary" @click="submitCorrection">Save correction</button>
+    </div>
+    <div class="good" v-if="c.done" style="margin-top:6px">Saved. Replay more alerts to see the precedent applied.</div>
+  </div>
+</div>
+
+<div class="drawer" v-if="rep"><div style="display:flex"><div class="spacer"></div><button @click="rep=null">Close</button></div><pre style="border:none;font-size:12.5px">{{ rep }}</pre></div>
+</div>
+
+<script>
+const { createApp } = Vue;
+createApp({
+  data: () => ({ s: { types: [], provider: '', alerts: 0, corrections: 0, readonly: false }, tl: {}, ev: {}, rows: [], d: null, rep: null,
+    busy: false, f: { alert_type: '', outcome: '' }, c: { verdict: 'benign', note: '', done: false },
+    levels: [{ k: 'assisted', name: 'AI-Assisted', desc: 'human approves every action' }, { k: 'ai_led', name: 'AI-Led', desc: 'human signs off on drafted response' }, { k: 'autonomous', name: 'Autonomous', desc: 'acts within gates, reversible' }] }),
+  methods: {
+    async api(p, o) { const r = await fetch(p, o); if (!r.ok) { const t = await r.text(); alert(t); throw new Error(t); } return r.headers.get('content-type')?.includes('json') ? r.json() : r.text(); },
+    pct(v, d = 1) { return (v * 100).toFixed(d) + '%'; },
+    name(k) { return (this.levels.find(l => l.k === k) || { name: k }).name; },
+    y(v) { return 110 - Math.max(0, (v - .8) / .2) * 100; },
+    poly(pts) { if (!pts.length) return ''; const n = pts[pts.length - 1].n; return pts.map(p => `${30 + (p.n / n) * 485},${this.y(p.window_lb)}`).join(' '); },
+    argstr(i) { const v = Object.values(i || {}); return v.length ? '(' + v.join(', ') + ')' : ''; },
+    async refresh() {
+      this.s = await this.api('/api/summary');
+      for (const t of this.s.types) {
+        this.tl[t.alert_type] = (await this.api(`/api/timeline?alert_type=${t.alert_type}&bucket=25`)).points;
+        this.ev[t.alert_type] = await this.api(`/api/ladder/${t.alert_type}/events`);
+      }
+      await this.load();
+    },
+    async load() { const q = new URLSearchParams(Object.entries(this.f).filter(([, v]) => v)); this.rows = await this.api('/api/investigations?limit=60&' + q); },
+    async open(id) { this.d = await this.api('/api/investigations/' + id); this.c = { verdict: this.d.human_verdict, note: '', done: false }; },
+    async replay(n) { this.busy = true; try { await this.api('/api/replay', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ n }) }); await this.refresh(); } finally { this.busy = false; } },
+    async approve(t) { await this.api(`/api/ladder/${t}/approve`, { method: 'POST' }); await this.refresh(); },
+    async report(t) { this.rep = await this.api(`/api/ladder/${t}/report`); },
+    async submitCorrection() { await this.api(`/api/investigations/${this.d.id}/correct`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ verdict: this.c.verdict, note: this.c.note }) }); this.c.done = true; await this.refresh(); },
+  },
+  mounted() { this.refresh(); setInterval(() => { if (!this.d && !this.busy) this.refresh(); }, 15000); },
+}).mount('#app');
+</script>
+</body>
+</html>

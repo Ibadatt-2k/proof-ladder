@@ -1,0 +1,4 @@
+{
+  "phishing": {"max_critical_misses": 0, "min_agreement": 0.95, "max_deferral_rate": 0.05, "max_grading_violation_rate": 0.05},
+  "login":    {"max_critical_misses": 0, "min_agreement": 0.95, "max_deferral_rate": 0.12, "max_grading_violation_rate": 0.05}
+}
