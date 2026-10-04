@@ -2,6 +2,8 @@
 
 **Evidence-gated autonomy for an agentic SOC triage agent.**
 
+**Live demo:** https://proof-ladder-363248976887.us-west1.run.app (first load after idle takes a few seconds while it seeds 600 alerts)
+
 An AI analyst triages security alerts in shadow mode, every verdict is graded by its evidence, its decisions are scored against human analysts per alert type, and it earns more autonomy only when the data proves it is safe. Analyst corrections are remembered and become permanent regression tests.
 
 ![dashboard](docs/dashboard.png)
