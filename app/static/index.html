@@ -4,192 +4,758 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Proof Ladder</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<meta name="description" content="An AI triage agent earns autonomy one alert type at a time, on proven agreement with analysts.">
+<link rel="preload" href="/static/fonts/public-sans-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <script src="/static/vue.global.prod.js"></script>
 <style>
-:root{--bg:#0d1117;--panel:#141a22;--panel2:#1a222d;--line:#263040;--text:#dbe3ee;--muted:#8a97a8;--accent:#5eb1ff;
---good:#3fbf7f;--warn:#e3b341;--bad:#f0605d;--inf:#b392f0;--gap:#8a97a8;--mono:'IBM Plex Mono',ui-monospace,monospace}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 'IBM Plex Sans',system-ui,sans-serif}
-header{display:flex;align-items:center;gap:16px;padding:14px 24px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5;flex-wrap:wrap}
-h1{font-size:17px;margin:0;font-weight:600;letter-spacing:.2px}h1 span{color:var(--accent)}
-.sub{color:var(--muted);font-size:12.5px}.spacer{flex:1}
-.pill{font:500 11.5px var(--mono);padding:3px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
-button{font:500 13px 'IBM Plex Sans';background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:6px 12px;cursor:pointer}
-button:hover{border-color:var(--accent)}button.primary{background:var(--accent);color:#06131f;border-color:var(--accent)}button:disabled{opacity:.45;cursor:not-allowed}
-main{padding:20px 24px;max-width:1400px;margin:0 auto}
-.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(520px,1fr));gap:16px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
-.card h2{margin:0 0 2px;font-size:15px;text-transform:capitalize}.card h3{font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin:16px 0 8px;font-weight:500}
-.ladder{display:flex;gap:6px;margin:12px 0}.rung{flex:1;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel2);font-size:12.5px}
-.rung b{display:block;font-size:13px}.rung small{color:var(--muted)}.rung.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}.rung.rec{border-style:dashed;border-color:var(--warn)}
-.tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.tile{background:var(--panel2);border-radius:6px;padding:8px 10px}
-.tile .v{font:500 18px var(--mono)}.tile .l{color:var(--muted);font-size:11.5px}
-.bad{color:var(--bad)}.good{color:var(--good)}.warn{color:var(--warn)}
-.banner{margin-top:12px;padding:10px 12px;border-radius:6px;border:1px solid var(--warn);background:rgba(227,179,65,.08);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.blocking{margin:6px 0 0;padding-left:18px;color:var(--muted);font-size:12.5px}
-svg text{fill:var(--muted);font:10px var(--mono)}
-table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;color:var(--muted);font-weight:500;font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;padding:6px 8px;border-bottom:1px solid var(--line)}
-td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}tr.row{cursor:pointer}tr.row:hover td{background:var(--panel2)}
-.v-malicious{color:var(--bad)}.v-benign{color:var(--good)}.v-needs_human{color:var(--warn)}
-.o{font:500 11px var(--mono);padding:2px 6px;border-radius:4px}.o-agree{background:rgba(63,191,127,.15);color:var(--good)}.o-disagree{background:rgba(240,96,93,.15);color:var(--bad)}.o-deferred{background:rgba(227,179,65,.15);color:var(--warn)}
-.filters{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}select,input,textarea{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font:13px 'IBM Plex Sans'}
-.drawer{position:fixed;top:0;right:0;height:100vh;width:min(760px,100vw);background:var(--panel);border-left:1px solid var(--line);overflow:auto;padding:20px;z-index:10;box-shadow:-20px 0 40px rgba(0,0,0,.4)}
-.grade{font:500 10.5px var(--mono);padding:2px 6px;border-radius:4px;text-transform:uppercase;margin-right:6px}
-.g-confirmed{background:rgba(63,191,127,.15);color:var(--good)}.g-inferred{background:rgba(179,146,240,.15);color:var(--inf)}.g-gap{background:rgba(138,151,168,.15);color:var(--gap)}
-.finding{padding:8px 0;border-bottom:1px solid var(--line)}.finding .why{color:var(--muted);font-size:12.5px;margin-top:2px}
-.ref{font:11px var(--mono);color:var(--accent)}
-.step{border:1px solid var(--line);border-radius:6px;margin:6px 0;background:var(--panel2)}.step summary{padding:6px 10px;cursor:pointer;font:12px var(--mono)}
-pre{margin:0;padding:8px 10px;font:11.5px/1.45 var(--mono);white-space:pre-wrap;word-break:break-word;color:#c3cfdd;border-top:1px solid var(--line)}
-.viol{color:var(--warn);font-size:12.5px}.kv{display:grid;grid-template-columns:140px 1fr;gap:4px 12px;font-size:13px}.kv div:nth-child(odd){color:var(--muted)}
-.events li{margin:6px 0;font-size:13px}.muted{color:var(--muted)}
-@media (max-width:640px){.grid2{grid-template-columns:1fr}.tiles{grid-template-columns:repeat(2,1fr)}main{padding:16px}}
+@font-face{font-family:"Public Sans";src:url(/static/fonts/public-sans-latin-wght-normal.woff2) format("woff2");font-weight:100 900;font-display:swap}
+@font-face{font-family:"Source Serif 4";src:url(/static/fonts/source-serif-4-latin-opsz-normal.woff2) format("woff2");font-weight:200 900;font-display:swap}
+
+:root{
+  color-scheme:light;
+  --canvas:#f4f5f7; --surface:#ffffff; --sunk:#f7f8fa;
+  --ink:#17202b; --ink-2:#4a5462; --ink-3:#6b7583;
+  --rule:#e1e4e9; --rule-strong:#c4cad3;
+  --data:#2a78d6; --data-soft:#cde2fb;
+  --good:#0ca30c; --good-text:#0a7a0a;
+  --critical:#d03b3b; --critical-text:#b42f2f;
+  --warning:#fab219; --warning-text:#8a5b00;
+  --gap:#8a93a0;
+  --backdrop:rgba(23,32,43,.32);
+  --sans:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --serif:"Source Serif 4",Georgia,serif;
+  --code:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --r-sheet:14px; --r-ctl:7px;
+
+  /* Motion tokens: exit is about 0.7 x enter. */
+  --time-press:90ms; --time-hover:160ms; --time-small:220ms; --time-panel:360ms; --time-scene:620ms;
+  --ease-out:cubic-bezier(0.22,1,0.36,1);
+  --ease-in:cubic-bezier(0.3,0,0.8,0.15);
+  --ease-in-out:cubic-bezier(0.65,0,0.35,1);
+  --ease-stamp:linear(0,0.097,0.285,0.485,0.659,0.793,0.89,0.951,0.986,1.005,1.013,1.014,1.013,1.01,1.007,1.005,1.003,1.001,1.001,1,1);
+  --motion:1;
+}
+@media (prefers-color-scheme:dark){
+  :root:where(:not([data-theme="light"])){
+    color-scheme:dark;
+    --canvas:#14171c; --surface:#1b1f26; --sunk:#171a20;
+    --ink:#e8ebf0; --ink-2:#b0b8c4; --ink-3:#8b95a3;
+    --rule:#2b313a; --rule-strong:#3d4550;
+    --data:#3987e5; --data-soft:#1c3a5f;
+    --good-text:#4cc24c; --critical-text:#e66767; --warning-text:#fab219;
+    --backdrop:rgba(0,0,0,.5);
+  }
+}
+@media (prefers-reduced-motion:reduce){ :root{--motion:0} .stamp{animation:none} }
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--canvas);color:var(--ink);font:400 15px/1.55 var(--sans);font-variant-numeric:tabular-nums}
+h1,h2,h3,p,dl,dd,ol,ul{margin:0}
+ol,ul{padding:0;list-style:none}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--data);outline-offset:2px;border-radius:4px}
+.wrap{max-width:1240px;margin:0 auto;padding:0 32px}
+.muted{color:var(--ink-3)}
+.i{width:16px;height:16px;flex:none;vertical-align:-3px}
+
+/* Buttons: press feedback only, no hover lift. */
+.btn{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:var(--r-ctl);border:1px solid var(--rule-strong);background:var(--surface);font-weight:550;font-size:14px;cursor:pointer;
+  transition:background-color var(--time-small) var(--ease-out),border-color var(--time-small) var(--ease-out),scale var(--time-hover) var(--ease-out)}
+.btn:active:not(:disabled){scale:.97;transition-duration:var(--time-press)}
+@media (hover:hover){.btn:hover:not(:disabled){border-color:var(--ink-3);transition-duration:var(--time-hover)}}
+.btn.primary{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+@media (hover:hover){.btn.primary:hover:not(:disabled){background:var(--ink-2);border-color:var(--ink-2)}}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.quiet{border-color:transparent;background:transparent;padding:0 8px}
+.linkish{border:0;background:none;padding:0;color:var(--data);cursor:pointer;font-weight:550}
+
+/* Masthead */
+.mast{background:var(--surface);border-bottom:1px solid var(--rule)}
+.mast .wrap{display:flex;gap:32px;align-items:flex-end;justify-content:space-between;padding-top:28px;padding-bottom:24px;flex-wrap:wrap}
+.brand h1{font:600 30px/1.15 var(--serif);letter-spacing:-.01em}
+.brand p{margin-top:8px;max-width:62ch;color:var(--ink-2)}
+.mast-side{display:flex;gap:28px;align-items:center;flex-wrap:wrap}
+.counts{display:flex;gap:24px}
+.counts dt{font-size:13px;color:var(--ink-3)}
+.counts dd{font-weight:600;font-size:17px}
+
+.banner{margin-top:20px;padding:12px 14px;border-radius:var(--r-ctl);border:1px solid var(--critical);color:var(--critical-text);background:var(--surface);display:flex;gap:10px;align-items:flex-start}
+
+/* Section headings */
+.sec{padding:36px 0 8px}
+.sec-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+.sec-head h2{font:600 21px/1.25 var(--serif)}
+.sec-head p{color:var(--ink-2);max-width:70ch;margin-top:4px}
+
+/* Lanes: one row per alert type, not cards */
+.lanes{background:var(--surface);border:1px solid var(--rule);border-radius:var(--r-sheet)}
+.lane{display:grid;grid-template-columns:230px minmax(0,1fr) 290px;gap:28px;padding:24px 24px 20px}
+.lane + .lane{border-top:1px solid var(--rule)}
+.lane h3{font:600 19px/1.2 var(--serif)}
+.lane-sub{font-size:13px;color:var(--ink-3);margin-top:2px}
+.rungs{margin-top:16px;display:grid;gap:6px;position:relative}
+.rung{display:grid;grid-template-columns:18px 1fr;gap:10px;align-items:start;font-size:14px;position:relative}
+.rung .dot{width:12px;height:12px;border-radius:50%;border:2px solid var(--rule-strong);margin-top:4px;background:var(--surface)}
+.rung.passed .dot{background:var(--ink-3);border-color:var(--ink-3)}
+.rung.current .dot{background:var(--data);border-color:var(--data);box-shadow:0 0 0 3px var(--data-soft)}
+.rung.ready .dot{border-color:var(--data);border-style:dashed}
+.rung b{font-weight:600;display:block;line-height:1.35}
+.rung small{display:block;color:var(--ink-3);font-size:12.5px;line-height:1.35}
+.rung:not(.current) b{font-weight:500;color:var(--ink-2)}
+.stamp{position:absolute;right:-6px;top:-12px;font:700 11px/1 var(--sans);letter-spacing:.04em;color:var(--good-text);border:2px solid currentColor;border-radius:4px;padding:4px 6px;rotate:-7deg;background:var(--surface);
+  animation:stamp 320ms var(--ease-stamp) both, ink 90ms linear both}
+@keyframes stamp{from{scale:calc(1 + .35*var(--motion));rotate:calc(-7deg - 6deg*var(--motion))}}
+@keyframes ink{from{opacity:0}}
+
+.gauge{width:100%;height:auto;display:block;overflow:visible}
+.gauge text{font:500 12px var(--sans);fill:var(--ink-3)}
+.gauge .lab{fill:var(--ink-2);font-weight:600}
+.gauge .mv{transition:transform var(--time-scene) var(--ease-in-out)}
+.gauge-cap{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--ink-2);margin-top:6px}
+.key{display:inline-flex;align-items:center;gap:6px}
+.key i{display:inline-block}
+.key .k-obs{width:10px;height:10px;border-radius:50%;background:var(--data)}
+.key .k-lb{width:2px;height:12px;background:var(--data)}
+.key .k-bar{width:2px;height:12px;background:var(--ink)}
+
+.verdict h4{margin:0;font-size:15px;font-weight:650;display:flex;gap:8px;align-items:center}
+.verdict .why{margin-top:6px;color:var(--ink-2);font-size:14px}
+.verdict ul{margin-top:8px;display:grid;gap:4px;font-size:14px;color:var(--ink-2)}
+.verdict ul li{padding-left:14px;position:relative}
+.verdict ul li::before{content:"";position:absolute;left:0;top:.62em;width:6px;height:2px;background:var(--ink-3)}
+.verdict .acts{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.facts{display:flex;gap:6px 26px;flex-wrap:wrap;border-top:1px dashed var(--rule);padding-top:12px;margin-top:18px}
+.facts div{display:flex;gap:8px;align-items:baseline}
+.facts dt{font-size:13px;color:var(--ink-3)}
+.facts dd{font-weight:600}
+.history{grid-column:1 / -1}
+.history summary{cursor:pointer;font-size:13.5px;color:var(--ink-2);width:max-content}
+.history ol{margin-top:10px;display:grid;gap:8px;border-left:2px solid var(--rule);padding-left:14px}
+.history li{font-size:14px}
+.history time{color:var(--ink-3);font-size:13px;margin-left:6px}
+
+/* Trend charts: small multiples on one shared scale */
+.trends{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.chart{background:var(--surface);border:1px solid var(--rule);border-radius:var(--r-sheet);padding:18px 18px 10px;position:relative}
+.chart h3{font-size:15px;font-weight:600}
+.chart p{font-size:13px;color:var(--ink-3)}
+.chart svg{width:100%;height:auto;display:block;margin-top:8px;touch-action:pan-y}
+.chart text{font:500 11.5px var(--sans);fill:var(--ink-3)}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--surface);font-size:12.5px;line-height:1.4;padding:6px 9px;border-radius:6px;white-space:nowrap;translate:-50% calc(-100% - 10px)}
+
+/* Investigations */
+.tools{display:flex;gap:10px;flex-wrap:wrap}
+.seg{display:inline-flex;border:1px solid var(--rule-strong);border-radius:var(--r-ctl);overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:none;padding:6px 12px;font-size:13.5px;cursor:pointer;color:var(--ink-2);transition:background-color var(--time-small) var(--ease-out)}
+.seg button + button{border-left:1px solid var(--rule)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.table-box{background:var(--surface);border:1px solid var(--rule);border-radius:var(--r-sheet);overflow:hidden}
+table{width:100%;border-collapse:collapse;font-size:14px}
+thead th{text-align:left;font-weight:600;font-size:13px;color:var(--ink-3);padding:11px 14px;border-bottom:1px solid var(--rule);background:var(--sunk)}
+tbody td{padding:12px 14px;border-bottom:1px solid var(--rule);vertical-align:top}
+tbody tr:last-child td{border-bottom:0}
+tbody tr{cursor:pointer;transition:background-color var(--time-small) var(--ease-out)}
+@media (hover:hover){tbody tr:hover{background:var(--sunk);transition-duration:var(--time-hover)}}
+td .h{font-weight:550}
+td .s{font-size:13px;color:var(--ink-3);margin-top:2px}
+td .id{font:12px var(--code);color:var(--ink-3)}
+.v{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.v-malicious{color:var(--critical-text)} .v-benign{color:var(--good-text)} .v-needs_human{color:var(--warning-text)}
+.tag{display:inline-block;font-size:12.5px;color:var(--ink-2);border:1px solid var(--rule);border-radius:999px;padding:1px 8px;margin:0 4px 4px 0;white-space:nowrap}
+.tag.warn{border-color:var(--warning);color:var(--warning-text)}
+.crit{color:var(--critical-text);font-weight:600;font-size:13px;display:block;margin-top:2px}
+.more{display:flex;justify-content:center;padding:14px}
+.empty{padding:36px;text-align:center;color:var(--ink-2)}
+
+footer{padding:40px 0 56px;color:var(--ink-3);font-size:13px}
+
+/* Side sheet (native dialog): arrives in 360ms ease-out, leaves in 260ms ease-in */
+dialog.sheet{position:fixed;inset:0 0 0 auto;margin:0;height:100dvh;max-height:none;width:min(720px,100vw);border:0;border-left:1px solid var(--rule);padding:0;background:var(--surface);color:var(--ink);overflow:auto;
+  opacity:0;translate:calc(2.5rem*var(--motion)) 0;
+  transition:opacity 260ms var(--ease-in),translate 260ms var(--ease-in),display 260ms allow-discrete,overlay 260ms allow-discrete}
+dialog.sheet[open]{opacity:1;translate:0 0;transition-duration:var(--time-panel);transition-timing-function:var(--ease-out)}
+@starting-style{dialog.sheet[open]{opacity:0;translate:calc(2.5rem*var(--motion)) 0}}
+dialog.sheet::backdrop{background:var(--backdrop);opacity:0;transition:opacity 200ms var(--ease-in),display 200ms allow-discrete,overlay 200ms allow-discrete}
+dialog.sheet[open]::backdrop{opacity:1;transition-duration:260ms;transition-timing-function:var(--ease-out)}
+@starting-style{dialog.sheet[open]::backdrop{opacity:0}}
+.sheet-head{position:sticky;top:0;background:var(--surface);border-bottom:1px solid var(--rule);padding:18px 24px;display:flex;gap:16px;align-items:flex-start;justify-content:space-between;z-index:1}
+.sheet-head h2{font:600 21px/1.3 var(--serif);margin-top:2px}
+.sheet-body{padding:22px 24px 40px}
+.sheet h3{font-size:14px;font-weight:650;margin:26px 0 10px}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.compare > div{border:1px solid var(--rule);border-radius:var(--r-ctl);padding:12px 14px}
+.compare dt{font-size:13px;color:var(--ink-3)}
+.compare dd{font-weight:600;margin-top:2px}
+.note{margin-top:12px;padding:12px 14px;border-radius:var(--r-ctl);background:var(--sunk);border-left:3px solid var(--warning);font-size:14px;color:var(--ink-2)}
+.note ul{margin-top:6px;display:grid;gap:4px}
+.finding{display:grid;grid-template-columns:96px 1fr;gap:12px;padding:10px 0;border-top:1px solid var(--rule);font-size:14px}
+.finding:first-of-type{border-top:0}
+.grade{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;white-space:nowrap}
+.g-confirmed{color:var(--good-text)} .g-inferred{color:var(--data)} .g-gap{color:var(--ink-3)}
+.finding .why{color:var(--ink-3);font-size:13px;margin-top:3px}
+.ref{font:12px var(--code);border:1px solid var(--rule);border-radius:4px;padding:0 5px;margin-left:4px;background:var(--sunk);color:var(--ink-2);cursor:pointer}
+.steps{display:grid;gap:6px;counter-reset:none}
+.steps details{border:1px solid var(--rule);border-radius:var(--r-ctl);background:var(--surface)}
+.steps details[open]{background:var(--sunk)}
+.steps summary{cursor:pointer;padding:8px 12px;font-size:13.5px;display:flex;gap:10px;align-items:baseline;list-style:none}
+.steps summary::-webkit-details-marker{display:none}
+.steps summary code{font:12.5px var(--code)}
+.steps .err{color:var(--critical-text);font-size:12.5px}
+.steps details.flash{border-color:var(--data)}
+pre{margin:0;padding:10px 12px;font:12px/1.5 var(--code);white-space:pre-wrap;word-break:break-word;color:var(--ink-2);border-top:1px solid var(--rule)}
+.payload{border:1px solid var(--rule);border-radius:var(--r-ctl)}
+.payload summary{cursor:pointer;padding:8px 12px;font-size:13.5px}
+.correct{margin-top:26px;border:1px solid var(--rule-strong);border-radius:var(--r-sheet);padding:16px}
+.correct h3{margin:0}
+.correct p{font-size:13.5px;color:var(--ink-2);margin-top:4px}
+.correct .row{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;align-items:center}
+.correct input[type=text]{flex:1;min-width:220px;height:36px;border:1px solid var(--rule-strong);border-radius:var(--r-ctl);padding:0 10px;background:var(--surface)}
+.ok{color:var(--good-text);font-size:14px;margin-top:10px;display:flex;gap:6px;align-items:center}
+
+/* Evidence report reads as a document */
+.doc{font-family:var(--serif);font-size:16.5px;line-height:1.6;max-width:62ch}
+.doc .meta{font-family:var(--sans);font-size:13.5px;color:var(--ink-3)}
+.doc p{margin-top:12px}
+.doc table{font-family:var(--sans);margin-top:18px;font-size:14px}
+.doc th,.doc td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--rule)}
+.doc th{font-weight:600;color:var(--ink-3);font-size:13px}
+.doc td:nth-child(2),.doc td:nth-child(3){white-space:nowrap}
+.doc .acts{font-family:var(--sans);display:flex;gap:8px;margin-top:22px;flex-wrap:wrap}
+
+@media (max-width:1000px){
+  .lane{grid-template-columns:1fr;gap:18px}
+  .history{grid-column:auto}
+  .trends{grid-template-columns:1fr}
+}
+@media (max-width:640px){
+  .wrap{padding:0 16px}
+  .mast .wrap{padding-top:20px}
+  .brand h1{font-size:25px}
+  .lane{padding:18px 16px}
+  .col-hand,.col-notes,.col-analyst{display:none}
+  .compare{grid-template-columns:1fr}
+  .finding{grid-template-columns:1fr;gap:4px}
+  .sheet-head,.sheet-body{padding-left:16px;padding-right:16px}
+}
 </style>
 </head>
 <body>
-<div id="app">
-<header>
-  <div><h1>Proof <span>Ladder</span></h1><div class="sub">AI triage earns autonomy per alert type, with evidence. Shadow mode against analyst verdicts.</div></div>
-  <div class="spacer"></div>
-  <span class="pill">provider: {{ s.provider }}</span>
-  <span class="pill">{{ s.alerts }} alerts</span>
-  <span class="pill">{{ s.corrections }} corrections</span>
-  <button class="primary" :disabled="busy || s.readonly" @click="replay(100)">{{ busy ? 'Triaging...' : 'Replay 100 alerts' }}</button>
-</header>
-<main>
-  <div class="grid2">
-    <div class="card" v-for="t in s.types" :key="t.alert_type">
-      <h2>{{ t.alert_type }} alerts</h2>
-      <div class="sub">Last {{ t.metrics.total }} investigations</div>
-      <div class="ladder">
-        <div v-for="l in levels" :key="l.k" class="rung" :class="{on: t.level===l.k, rec: t.recommendation===l.k}">
-          <b>{{ l.name }}</b><small>{{ l.desc }}</small>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-check" viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-cross" viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-person" viewBox="0 0 16 16"><circle cx="8" cy="5.2" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3 14c.6-2.8 2.6-4.2 5-4.2s4.4 1.4 5 4.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 16 16"><path d="M8 2.2L14.5 13.5h-13z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 6.5v3.3M8 11.6v.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="i-full" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5" fill="currentColor"/></symbol>
+  <symbol id="i-half" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 3a5 5 0 010 10z" fill="currentColor"/></symbol>
+  <symbol id="i-empty" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-dasharray="2.2 2"/></symbol>
+</svg>
+
+<div id="app" v-cloak>
+  <header class="mast">
+    <div class="wrap">
+      <div class="brand">
+        <h1>Proof Ladder</h1>
+        <p>An AI analyst triages every alert in shadow mode. It earns more autonomy for an alert type only when its agreement with analysts is proven, not just high.</p>
+      </div>
+      <div class="mast-side">
+        <dl class="counts">
+          <div><dt>Reasoner</dt><dd>{{ providerName }}</dd></div>
+          <div><dt>Alerts triaged</dt><dd>{{ fmt(s.alerts) }}</dd></div>
+          <div><dt>Corrections</dt><dd>{{ fmt(s.corrections) }}</dd></div>
+        </dl>
+        <button class="btn primary" :disabled="busy || s.readonly" :title="s.readonly ? 'This demo is read-only' : ''" @click="replay(100)">
+          {{ busy ? 'Triaging 100 alerts…' : 'Replay 100 alerts' }}
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div v-if="error" class="banner" role="alert">
+      <svg class="i"><use href="#i-alert"/></svg>
+      <div><b>{{ error.title }}</b> {{ error.detail }}</div>
+      <button class="btn quiet" style="margin-left:auto;height:24px" @click="error=null">Dismiss</button>
+    </div>
+
+    <section class="sec" aria-labelledby="h-ladder">
+      <div class="sec-head">
+        <div>
+          <h2 id="h-ladder">Autonomy by alert type</h2>
+          <p>Promotion is judged on the 95% lower bound of agreement, so a lucky run on a few alerts can't earn trust. Promotions need your approval; demotions happen on their own.</p>
         </div>
       </div>
-      <div class="tiles">
-        <div class="tile"><div class="v">{{ pct(t.metrics.agreement_rate) }}</div><div class="l">agreement</div></div>
-        <div class="tile"><div class="v" :class="t.next && t.metrics.wilson_lb >= t.next.criteria.min_lb ? 'good':'warn'">{{ pct(t.metrics.wilson_lb) }}</div><div class="l">95% lower bound</div></div>
-        <div class="tile"><div class="v" :class="t.metrics.critical_misses ? 'bad':'good'">{{ t.metrics.critical_misses }}</div><div class="l">critical misses</div></div>
-        <div class="tile"><div class="v">{{ t.metrics.false_alarms }}</div><div class="l">false alarms</div></div>
-        <div class="tile"><div class="v">{{ pct(t.metrics.deferral_rate) }}</div><div class="l">deferred</div></div>
+
+      <div class="lanes" v-if="s.types.length">
+        <article class="lane" v-for="t in s.types" :key="t.alert_type">
+          <div>
+            <h3>{{ typeName(t.alert_type) }}</h3>
+            <p class="lane-sub">Last {{ fmt(t.metrics.total) }} investigations</p>
+            <ol class="rungs" :aria-label="typeName(t.alert_type) + ' autonomy levels'">
+              <li v-for="(l, i) in levels" :key="l.k" class="rung" :class="rungState(t, i)">
+                <span class="dot" aria-hidden="true"></span>
+                <span><b>{{ l.name }}</b><small>{{ l.desc }}</small></span>
+                <span v-if="justApproved === t.alert_type && t.level === l.k" class="stamp">APPROVED</span>
+              </li>
+            </ol>
+          </div>
+
+          <div>
+            <svg class="gauge" :viewBox="'0 0 ' + G.w + ' 96'" :style="{aspectRatio: G.w + ' / 96'}" role="img" :aria-label="gaugeLabel(t)">
+              <line :x1="gx(G.min)" :x2="gx(G.max)" y1="58" y2="58" stroke="var(--rule-strong)" stroke-width="1"/>
+              <g v-for="v in gTicks" :key="v">
+                <line :x1="gx(v)" :x2="gx(v)" y1="58" y2="63" stroke="var(--rule-strong)"/>
+                <text :x="gx(v)" y="80" text-anchor="middle">{{ Math.round(v*100) }}%</text>
+              </g>
+              <g v-for="b in bars(t)" :key="b.level">
+                <line :x1="gx(b.v)" :x2="gx(b.v)" y1="22" y2="62" :stroke="b.target ? 'var(--ink)' : 'var(--rule-strong)'" :stroke-width="b.target ? 2 : 1.5" :stroke-dasharray="b.target ? '' : '3 3'"/>
+                <text v-if="b.target" :x="gx(b.v)" y="14" :text-anchor="b.v > 0.97 ? 'end' : 'middle'" :dx="b.v > 0.97 ? 4 : 0" class="lab">{{ b.name }} bar</text>
+              </g>
+              <rect :x="gx(clampG(t.metrics.wilson_lb))" y="49" :width="Math.max(gx(clampG(t.metrics.agreement_rate)) - gx(clampG(t.metrics.wilson_lb)), 2)" height="6" rx="3" fill="var(--data-soft)" style="transition:x var(--time-scene) var(--ease-in-out),width var(--time-scene) var(--ease-in-out)"/>
+              <g class="mv" :style="{transform: 'translateX(' + gx(clampG(t.metrics.wilson_lb)) + 'px)'}">
+                <line x1="0" x2="0" y1="40" y2="64" stroke="var(--data)" stroke-width="2"/>
+                <text x="0" y="36" :text-anchor="lbAnchor(t)" :dx="lbAnchor(t) === 'start' ? 5 : -5" class="lab" style="fill:var(--data)">{{ pct(t.metrics.wilson_lb) }}</text>
+              </g>
+              <g class="mv" :style="{transform: 'translateX(' + gx(clampG(t.metrics.agreement_rate)) + 'px)'}">
+                <circle cx="0" cy="52" r="6" fill="var(--data)" stroke="var(--surface)" stroke-width="2"/>
+              </g>
+            </svg>
+            <div class="gauge-cap" aria-hidden="true">
+              <span class="key"><i class="k-obs"></i>Observed agreement {{ pct(t.metrics.agreement_rate) }}</span>
+              <span class="key"><i class="k-lb"></i>Lower bound {{ pct(t.metrics.wilson_lb) }}</span>
+              <span class="key" v-if="t.next"><i class="k-bar"></i>{{ levelName(t.next.level) }} needs {{ pct(t.next.criteria.min_lb, 0) }}</span>
+            </div>
+            <dl class="facts">
+              <div><dt>Critical misses</dt><dd :style="{color: t.metrics.critical_misses ? 'var(--critical-text)' : ''}">{{ t.metrics.critical_misses }}</dd></div>
+              <div><dt>False alarms</dt><dd>{{ fmt(t.metrics.false_alarms) }}</dd></div>
+              <div><dt>Sent to analysts</dt><dd>{{ pct(t.metrics.deferral_rate) }}</dd></div>
+              <div><dt>Used analyst precedent</dt><dd>{{ pct(t.metrics.precedent_rate) }}</dd></div>
+            </dl>
+          </div>
+
+          <div class="verdict">
+            <template v-if="t.recommendation">
+              <h4><svg class="i" style="color:var(--good-text)"><use href="#i-check"/></svg>Ready for {{ levelName(t.recommendation) }}</h4>
+              <p class="why">Every criterion is met on the last {{ fmt(t.metrics.total) }} alerts. Review the evidence, then approve.</p>
+              <div class="acts">
+                <button class="btn" @click="openReport(t.alert_type)">Review evidence</button>
+                <button class="btn primary" :disabled="s.readonly || approving" @click="approve(t.alert_type)">Approve promotion</button>
+              </div>
+            </template>
+            <template v-else-if="t.next">
+              <h4><svg class="i" style="color:var(--ink-3)"><use href="#i-cross"/></svg>Not ready for {{ levelName(t.next.level) }}</h4>
+              <ul><li v-for="b in blockers(t)" :key="b">{{ b }}</li></ul>
+              <div class="acts"><button class="btn" @click="openReport(t.alert_type)">Evidence report</button></div>
+            </template>
+            <template v-else>
+              <h4><svg class="i" style="color:var(--good-text)"><use href="#i-check"/></svg>At the highest level</h4>
+              <p class="why">Any critical miss, or a drop below the bar, demotes it automatically.</p>
+            </template>
+          </div>
+
+
+
+          <details class="history" v-if="(ev[t.alert_type] || []).length">
+            <summary>Ladder history ({{ ev[t.alert_type].length }})</summary>
+            <ol>
+              <li v-for="e in ev[t.alert_type]" :key="e.id">
+                {{ eventText(e) }}<time :datetime="e.at">{{ ago(e.at) }}</time>
+              </li>
+            </ol>
+          </details>
+        </article>
       </div>
-      <h3>Agreement lower bound over time</h3>
-      <svg :viewBox="'0 0 520 120'" width="100%" height="120" preserveAspectRatio="none" v-if="tl[t.alert_type]">
-        <line x1="30" x2="515" :y1="y(t.next ? t.next.criteria.min_lb : .98)" :y2="y(t.next ? t.next.criteria.min_lb : .98)" stroke="var(--warn)" stroke-dasharray="4 4"/>
-        <text x="0" :y="y(t.next ? t.next.criteria.min_lb : .98)+3">{{ pct(t.next ? t.next.criteria.min_lb : .98, 0) }}</text>
-        <text x="0" :y="y(.8)+3">80%</text><text x="0" :y="y(1)+8">100%</text>
-        <polyline fill="none" stroke="var(--accent)" stroke-width="2" :points="poly(tl[t.alert_type])"/>
-      </svg>
-      <div v-if="t.recommendation" class="banner">
-        <span>Criteria for <b>{{ name(t.recommendation) }}</b> are met.</span>
-        <div class="spacer"></div>
-        <button @click="report(t.alert_type)">Evidence report</button>
-        <button class="primary" :disabled="s.readonly" @click="approve(t.alert_type)">Approve promotion</button>
+      <div v-else class="lanes empty">Loading the ladder…</div>
+    </section>
+
+    <section class="sec" aria-labelledby="h-trend">
+      <div class="sec-head">
+        <div>
+          <h2 id="h-trend">How the lower bound moved</h2>
+          <p>Measured over the most recent 1,000 alerts after every 25. Both charts share one scale.</p>
+        </div>
       </div>
-      <div v-else-if="t.next">
-        <h3>Blocking promotion to {{ name(t.next.level) }}</h3>
-        <ul class="blocking"><li v-for="b in t.next.blocking">{{ b }}</li></ul>
-        <button style="margin-top:8px" @click="report(t.alert_type)">Evidence report</button>
+      <div class="trends">
+        <figure class="chart" v-for="t in s.types" :key="'c'+t.alert_type" style="margin:0">
+          <h3>{{ typeName(t.alert_type) }}</h3>
+          <p>{{ trendSummary(t) }}</p>
+          <svg viewBox="0 0 520 190" style="aspect-ratio:520/190" role="img" :aria-label="trendSummary(t)" @pointermove="hover($event, t.alert_type)" @pointerleave="tip = null">
+            <g v-for="v in C.ticks" :key="v">
+              <line :x1="C.l" :x2="C.w - C.r" :y1="cy(v)" :y2="cy(v)" stroke="var(--rule)"/>
+              <text :x="C.l - 8" :y="cy(v) + 4" text-anchor="end">{{ Math.round(v*100) }}%</text>
+            </g>
+            <template v-if="t.next">
+              <line :x1="C.l" :x2="C.w - C.r" :y1="cy(t.next.criteria.min_lb)" :y2="cy(t.next.criteria.min_lb)" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="5 4"/>
+              <text :x="C.w - C.r" :y="cy(t.next.criteria.min_lb) - 6" text-anchor="end" style="fill:var(--ink-2);font-weight:600">{{ levelName(t.next.level) }} bar</text>
+            </template>
+            <polyline fill="none" stroke="var(--data)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" :points="line(t.alert_type)"/>
+            <text v-for="x in xTicks(t.alert_type)" :key="x" :x="cxFor(t.alert_type, x)" :y="C.h - 6" text-anchor="middle">{{ fmt(x) }}</text>
+            <g v-if="tip && tip.type === t.alert_type">
+              <line :x1="tip.x" :x2="tip.x" :y1="C.t" :y2="C.h - C.b" stroke="var(--ink-3)" stroke-width="1"/>
+              <circle :cx="tip.x" :cy="tip.y" r="5" fill="var(--data)" stroke="var(--surface)" stroke-width="2"/>
+            </g>
+          </svg>
+          <div v-if="tip && tip.type === t.alert_type" class="tip" :style="{left: tip.px + 'px', top: tip.py + 'px'}">
+            After {{ fmt(tip.n) }} alerts<br><b>{{ pct(tip.v) }}</b> lower bound
+          </div>
+        </figure>
       </div>
-    </div>
-  </div>
+    </section>
 
-  <div class="card" style="margin-top:16px">
-    <h2>Investigations</h2>
-    <div class="filters">
-      <select v-model="f.alert_type" @change="load"><option value="">all types</option><option>phishing</option><option>login</option></select>
-      <select v-model="f.outcome" @change="load"><option value="">all outcomes</option><option>agree</option><option>disagree</option><option>deferred</option></select>
-      <span class="muted" style="align-self:center;font-size:12.5px">Tip: filter to "disagree", open one, and correct it. Similar alerts will use your precedent.</span>
-    </div>
-    <table>
-      <thead><tr><th>ID</th><th>Alert</th><th>AI</th><th>Analyst</th><th>Outcome</th><th>Mode / action</th><th></th></tr></thead>
-      <tbody>
-        <tr class="row" v-for="r in rows" :key="r.id" @click="open(r.id)">
-          <td class="muted" style="font-family:var(--mono)">{{ r.external_id }}</td>
-          <td>{{ r.headline }}<div class="muted" style="font-size:12px">{{ r.summary }}</div></td>
-          <td :class="'v-'+r.ai_verdict">{{ r.ai_verdict }}</td>
-          <td :class="'v-'+r.human_verdict">{{ r.human_verdict }}</td>
-          <td><span class="o" :class="'o-'+r.outcome">{{ r.outcome }}</span><span v-if="r.critical_miss" class="bad"> critical</span></td>
-          <td class="muted">{{ r.autonomy }} / {{ r.action }}</td>
-          <td class="muted" style="font-size:12px"><span v-if="r.used_precedent">precedent </span><span v-if="r.corrected">corrected </span><span v-if="r.violations" class="warn">{{ r.violations }} rule</span></td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+    <section class="sec" aria-labelledby="h-inv">
+      <div class="sec-head">
+        <div>
+          <h2 id="h-inv">Investigations</h2>
+          <p>Open any alert to see the graded evidence and the full audit trail. Correct a wrong verdict, and similar alerts will cite your correction.</p>
+        </div>
+        <div class="tools">
+          <div class="seg" role="group" aria-label="Alert type">
+            <button v-for="o in typeOpts" :key="o.v" :aria-pressed="f.alert_type === o.v" @click="setFilter('alert_type', o.v)">{{ o.label }}</button>
+          </div>
+          <div class="seg" role="group" aria-label="Result">
+            <button v-for="o in outcomeOpts" :key="o.v" :aria-pressed="f.outcome === o.v" @click="setFilter('outcome', o.v)">{{ o.label }}</button>
+          </div>
+        </div>
+      </div>
+      <div class="table-box">
+        <table>
+          <thead><tr><th>Alert</th><th>AI verdict</th><th class="col-analyst">Analyst</th><th>Result</th><th class="col-hand">Handling</th><th class="col-notes">Notes</th></tr></thead>
+          <tbody>
+            <tr v-for="r in rows" :key="r.id" @click="open(r.id)" tabindex="0" @keydown.enter="open(r.id)">
+              <td><div class="h">{{ r.headline }}</div><div class="s">{{ r.summary }}</div><div class="id">{{ r.external_id }}</div></td>
+              <td><span class="v" :class="'v-' + r.ai_verdict"><svg class="i"><use :href="verdictIcon(r.ai_verdict)"/></svg>{{ verdictName(r.ai_verdict) }}</span></td>
+              <td class="col-analyst"><span class="v" :class="'v-' + r.human_verdict"><svg class="i"><use :href="verdictIcon(r.human_verdict)"/></svg>{{ verdictName(r.human_verdict) }}</span></td>
+              <td>{{ outcomeShort(r.outcome) }}<span v-if="r.critical_miss" class="crit">Critical miss</span></td>
+              <td class="col-hand muted">{{ handlingShort(r) }}</td>
+              <td class="col-notes"><span v-if="r.used_precedent" class="tag">Used precedent</span><span v-if="r.corrected" class="tag">Corrected</span><span v-if="r.violations" class="tag warn">{{ r.violations }} rule applied</span></td>
+            </tr>
+          </tbody>
+        </table>
+        <div v-if="!rows.length" class="empty">No investigations match these filters.</div>
+        <div class="more" v-if="rows.length && canMore"><button class="btn" @click="loadMore">Show 25 more</button></div>
+      </div>
+    </section>
 
-  <div class="grid2" style="margin-top:16px">
-    <div class="card" v-for="t in s.types" :key="'e'+t.alert_type">
-      <h2>{{ t.alert_type }} ladder history</h2>
-      <ul class="events"><li v-for="e in ev[t.alert_type]" :key="e.id"><b :class="e.event==='demote'?'bad':e.event==='promote'?'good':'warn'">{{ e.event }}</b> {{ name(e.from) }} to {{ name(e.to) }} <span class="muted">by {{ e.actor }}: {{ e.reason }}</span></li>
-      <li v-if="!(ev[t.alert_type]||[]).length" class="muted">No changes yet.</li></ul>
-    </div>
-  </div>
-</main>
+    <footer>Synthetic alerts and threat intel, generated with known answers so agreement can be measured. Labels stand in for analyst verdicts. Source and method on <a href="https://github.com/Ibadatt-2k/proof-ladder" style="color:inherit">GitHub</a>.</footer>
+  </main>
 
-<div class="drawer" v-if="d">
-  <div style="display:flex;align-items:center;gap:10px"><h2 style="margin:0;font-size:16px">{{ d.external_id }}</h2><span class="o" :class="'o-'+d.outcome">{{ d.outcome }}</span><div class="spacer"></div><button @click="d=null">Close</button></div>
-  <p>{{ d.summary }}</p>
-  <div class="kv">
-    <div>AI verdict</div><div :class="'v-'+d.ai_verdict">{{ d.ai_verdict }} <span class="muted" v-if="d.proposed_verdict!==d.ai_verdict">(proposed {{ d.proposed_verdict }}, changed by grading rules)</span></div>
-    <div>Analyst verdict</div><div :class="'v-'+d.human_verdict">{{ d.human_verdict }}</div>
-    <div>Autonomy / action</div><div>{{ d.autonomy }} / {{ d.action }}</div>
-    <div>Scenario</div><div class="muted">{{ d.scenario }} (generator label, hidden from the agent)</div>
-    <div>Provider / latency</div><div>{{ d.provider }} / {{ d.latency_ms }} ms / ${{ d.cost_usd }}</div>
-  </div>
-  <div v-if="d.violations.length"><h3 class="sub" style="margin-top:14px">Grading rule enforcement</h3><div class="viol" v-for="v in d.violations">{{ v }}</div></div>
-  <h3 class="sub" style="margin-top:14px">Findings</h3>
-  <div class="finding" v-for="fd in d.findings"><span class="grade" :class="'g-'+fd.grade">{{ fd.grade }}</span>{{ fd.claim }}
-    <span class="ref" v-for="r in fd.evidence_refs"> [{{ r }}]</span>
-    <div class="why" v-if="fd.reasoning">{{ fd.reasoning }}</div></div>
-  <h3 class="sub" style="margin-top:14px">Audit trail</h3>
-  <details class="step" v-for="st in d.steps" :key="st.ref"><summary><span class="ref">{{ st.ref }}</span> {{ st.kind }} {{ st.tool }} <span class="muted">{{ argstr(st.input) }}</span><span v-if="!st.ok" class="bad"> error</span></summary><pre>{{ JSON.stringify(st.output, null, 2) }}</pre></details>
-  <h3 class="sub" style="margin-top:14px">Alert payload</h3>
-  <pre style="border:1px solid var(--line);border-radius:6px">{{ JSON.stringify(d.payload, null, 2) }}</pre>
-  <div class="card" style="margin-top:14px" v-if="!s.readonly">
-    <b>Correct this verdict</b>
-    <div class="sub">Stored in memory for similar alerts and exported as a regression test.</div>
-    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-      <select v-model="c.verdict"><option>benign</option><option>malicious</option></select>
-      <input v-model="c.note" placeholder="Analyst note, e.g. Zscaler egress, not travel" style="flex:1;min-width:200px">
-      <button class="primary" @click="submitCorrection">Save correction</button>
-    </div>
-    <div class="good" v-if="c.done" style="margin-top:6px">Saved. Replay more alerts to see the precedent applied.</div>
-  </div>
-</div>
+  <dialog class="sheet" ref="invSheet" @close="d = null" @click="backdropClose($event, 'invSheet')" aria-labelledby="inv-title">
+    <template v-if="d">
+      <div class="sheet-head">
+        <div>
+          <span class="id muted" style="font:12px var(--code)">{{ d.external_id }}</span>
+          <h2 id="inv-title">{{ d.payload.subject || (d.payload.user + ' signed in from ' + d.payload.geo.city) }}</h2>
+        </div>
+        <button class="btn" @click="$refs.invSheet.close()">Close</button>
+      </div>
+      <div class="sheet-body">
+        <p>{{ d.summary }}</p>
+        <dl class="compare" style="margin-top:16px">
+          <div><dt>AI verdict</dt><dd class="v" :class="'v-' + d.ai_verdict"><svg class="i"><use :href="verdictIcon(d.ai_verdict)"/></svg>{{ verdictName(d.ai_verdict) }}</dd></div>
+          <div><dt>Analyst verdict</dt><dd class="v" :class="'v-' + d.human_verdict"><svg class="i"><use :href="verdictIcon(d.human_verdict)"/></svg>{{ verdictName(d.human_verdict) }}</dd></div>
+        </dl>
+        <p class="muted" style="font-size:13.5px;margin-top:10px">{{ outcomeName(d.outcome) }}. {{ handling(d) }} at {{ levelName(d.autonomy) }}. {{ providerNameOf(d.provider) }}, {{ d.latency_ms }} ms.</p>
 
-<div class="drawer" v-if="rep"><div style="display:flex"><div class="spacer"></div><button @click="rep=null">Close</button></div><pre style="border:none;font-size:12.5px">{{ rep }}</pre></div>
+        <div class="note" v-if="d.violations.length">
+          <b>Grading rules changed this result</b>
+          <span v-if="d.proposed_verdict !== d.ai_verdict"> The AI proposed {{ verdictName(d.proposed_verdict).toLowerCase() }}; the rules changed it to {{ verdictName(d.ai_verdict).toLowerCase() }}.</span>
+          <ul><li v-for="v in d.violations" :key="v">{{ v }}</li></ul>
+        </div>
+
+        <h3>Findings</h3>
+        <div>
+          <div class="finding" v-for="(fd, i) in d.findings" :key="i">
+            <span class="grade" :class="'g-' + fd.grade"><svg class="i"><use :href="gradeIcon(fd.grade)"/></svg>{{ gradeName(fd.grade) }}</span>
+            <div>
+              {{ fd.claim }}<button v-for="r in fd.evidence_refs" :key="r" class="ref" @click="showStep(r)" :aria-label="'Show audit step ' + r">{{ r }}</button>
+              <div class="why" v-if="fd.reasoning">{{ fd.reasoning }}</div>
+            </div>
+          </div>
+        </div>
+
+        <h3>Audit trail</h3>
+        <ol class="steps">
+          <li v-for="st in d.steps" :key="st.ref">
+            <details :id="'step-' + st.ref" :class="{flash: flashRef === st.ref}">
+              <summary><span class="ref" style="cursor:inherit">{{ st.ref }}</span><code>{{ st.tool || st.kind }}</code><span class="muted">{{ argstr(st.input) }}</span><span v-if="!st.ok" class="err">failed</span></summary>
+              <pre>{{ JSON.stringify(st.output, null, 2) }}</pre>
+            </details>
+          </li>
+        </ol>
+
+        <h3>Original alert</h3>
+        <details class="payload"><summary>Show the alert as it arrived</summary><pre>{{ JSON.stringify(d.payload, null, 2) }}</pre></details>
+
+        <div class="correct" v-if="!s.readonly">
+          <h3>Correct this verdict</h3>
+          <p>Your correction is saved as precedent for alerts with the same pattern, and becomes a permanent regression test.</p>
+          <div class="row">
+            <div class="seg" role="group" aria-label="Correct verdict">
+              <button :aria-pressed="c.verdict === 'benign'" @click="c.verdict = 'benign'">Benign</button>
+              <button :aria-pressed="c.verdict === 'malicious'" @click="c.verdict = 'malicious'">Malicious</button>
+            </div>
+            <input type="text" v-model="c.note" placeholder="Why, for example: Zscaler VPN egress, not real travel" aria-label="Note for the correction">
+            <button class="btn primary" :disabled="c.saving" @click="submitCorrection">Save correction</button>
+          </div>
+          <p class="ok" v-if="c.done"><svg class="i"><use href="#i-check"/></svg>Correction saved. Replay alerts to see it applied.</p>
+        </div>
+      </div>
+    </template>
+  </dialog>
+
+  <dialog class="sheet" ref="repSheet" @close="rep = null" @click="backdropClose($event, 'repSheet')" aria-labelledby="rep-title">
+    <template v-if="rep">
+      <div class="sheet-head">
+        <div><span class="muted" style="font-size:13px">Evidence report</span><h2 id="rep-title">{{ typeName(rep.alert_type) }}: {{ levelName(rep.level) }} to {{ levelName(rep.target) }}</h2></div>
+        <button class="btn" @click="$refs.repSheet.close()">Close</button>
+      </div>
+      <div class="sheet-body">
+        <article class="doc">
+          <p class="meta">Prepared {{ new Date().toLocaleString() }} from the last {{ fmt(rep.m.total) }} investigations</p>
+          <p>{{ rep.ok ? 'Every criterion for ' + levelName(rep.target) + ' is met.' : 'Not every criterion for ' + levelName(rep.target) + ' is met yet.' }}
+            Of {{ fmt(rep.m.total) }} recent alerts, the AI decided {{ fmt(rep.m.decided) }} and sent {{ fmt(rep.m.deferred) }} to analysts. It agreed with analysts on {{ pct(rep.m.agreement_rate) }} of its decisions; with 95% confidence, the true rate is at least {{ pct(rep.m.wilson_lb) }}.</p>
+          <table>
+            <thead><tr><th>Measure</th><th>Result</th><th>Required</th><th></th></tr></thead>
+            <tbody>
+              <tr v-for="row in rep.rows" :key="row.label">
+                <td>{{ row.label }}</td><td>{{ row.value }}</td><td>{{ row.req }}</td>
+                <td><span v-if="row.pass !== null" class="v" :class="row.pass ? 'v-benign' : 'v-malicious'"><svg class="i"><use :href="row.pass ? '#i-check' : '#i-cross'"/></svg>{{ row.pass ? 'Met' : 'Not met' }}</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <p>Demotion is automatic after any critical miss, or if the lower bound falls 2 points below the bar for the current level.</p>
+          <div class="acts">
+            <button v-if="rep.recommended" class="btn primary" :disabled="s.readonly || approving" @click="approve(rep.alert_type)">Approve promotion to {{ levelName(rep.target) }}</button>
+            <button class="btn" @click="copyReport(rep.alert_type)">{{ copied ? 'Copied' : 'Copy as Markdown' }}</button>
+          </div>
+        </article>
+      </div>
+    </template>
+  </dialog>
 </div>
 
 <script>
 const { createApp } = Vue;
+const LEVELS = [
+  { k: 'assisted', name: 'AI-Assisted', desc: 'You approve every action' },
+  { k: 'ai_led', name: 'AI-Led', desc: 'You sign off on a drafted response' },
+  { k: 'autonomous', name: 'Autonomous', desc: 'Acts alone within set limits' },
+];
+const BARS = { ai_led: 0.95, autonomous: 0.98 };
+
 createApp({
-  data: () => ({ s: { types: [], provider: '', alerts: 0, corrections: 0, readonly: false }, tl: {}, ev: {}, rows: [], d: null, rep: null,
-    busy: false, f: { alert_type: '', outcome: '' }, c: { verdict: 'benign', note: '', done: false },
-    levels: [{ k: 'assisted', name: 'AI-Assisted', desc: 'human approves every action' }, { k: 'ai_led', name: 'AI-Led', desc: 'human signs off on drafted response' }, { k: 'autonomous', name: 'Autonomous', desc: 'acts within gates, reversible' }] }),
-  methods: {
-    async api(p, o) { const r = await fetch(p, o); if (!r.ok) { const t = await r.text(); alert(t); throw new Error(t); } return r.headers.get('content-type')?.includes('json') ? r.json() : r.text(); },
-    pct(v, d = 1) { return (v * 100).toFixed(d) + '%'; },
-    name(k) { return (this.levels.find(l => l.k === k) || { name: k }).name; },
-    y(v) { return 110 - Math.max(0, (v - .8) / .2) * 100; },
-    poly(pts) { if (!pts.length) return ''; const n = pts[pts.length - 1].n; return pts.map(p => `${30 + (p.n / n) * 485},${this.y(p.window_lb)}`).join(' '); },
-    argstr(i) { const v = Object.values(i || {}); return v.length ? '(' + v.join(', ') + ')' : ''; },
-    async refresh() {
-      this.s = await this.api('/api/summary');
-      for (const t of this.s.types) {
-        this.tl[t.alert_type] = (await this.api(`/api/timeline?alert_type=${t.alert_type}&bucket=25`)).points;
-        this.ev[t.alert_type] = await this.api(`/api/ladder/${t.alert_type}/events`);
-      }
-      await this.load();
-    },
-    async load() { const q = new URLSearchParams(Object.entries(this.f).filter(([, v]) => v)); this.rows = await this.api('/api/investigations?limit=60&' + q); },
-    async open(id) { this.d = await this.api('/api/investigations/' + id); this.c = { verdict: this.d.human_verdict, note: '', done: false }; },
-    async replay(n) { this.busy = true; try { await this.api('/api/replay', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ n }) }); await this.refresh(); } finally { this.busy = false; } },
-    async approve(t) { await this.api(`/api/ladder/${t}/approve`, { method: 'POST' }); await this.refresh(); },
-    async report(t) { this.rep = await this.api(`/api/ladder/${t}/report`); },
-    async submitCorrection() { await this.api(`/api/investigations/${this.d.id}/correct`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ verdict: this.c.verdict, note: this.c.note }) }); this.c.done = true; await this.refresh(); },
+  data: () => ({
+    s: { types: [], provider: '', alerts: 0, corrections: 0, readonly: false },
+    tl: {}, ev: {}, rows: [], canMore: false, d: null, rep: null, tip: null,
+    busy: false, approving: false, justApproved: null, error: null, copied: false, flashRef: null,
+    f: { alert_type: '', outcome: '' },
+    c: { verdict: 'benign', note: '', done: false, saving: false },
+    levels: LEVELS,
+    typeOpts: [{ v: '', label: 'All types' }, { v: 'phishing', label: 'Phishing' }, { v: 'login', label: 'Sign-ins' }],
+    outcomeOpts: [{ v: '', label: 'All results' }, { v: 'agree', label: 'Agreed' }, { v: 'disagree', label: 'Disagreed' }, { v: 'deferred', label: 'Sent to analyst' }],
+    G: { min: 0.75, max: 1, ticks: [0.75, 0.8, 0.85, 0.9, 0.95, 1], l: 18, r: 18, w: 560 },
+    C: { w: 520, h: 190, l: 44, r: 10, t: 12, b: 26, min: 0.75, max: 1, ticks: [0.75, 0.8, 0.85, 0.9, 0.95, 1] },
+  }),
+  computed: {
+    providerName() { return this.providerNameOf(this.s.provider); },
+    gTicks() { return this.G.w < 500 ? [0.8, 0.9, 1] : this.G.ticks; },
   },
-  mounted() { this.refresh(); setInterval(() => { if (!this.d && !this.busy) this.refresh(); }, 15000); },
+  methods: {
+    async api(path, opts) {
+      const r = await fetch(path, opts);
+      const ct = r.headers.get('content-type') || '';
+      const body = ct.includes('json') ? await r.json() : await r.text();
+      if (!r.ok) throw new Error((body && body.detail) || (typeof body === 'string' ? body : r.statusText));
+      return body;
+    },
+    fail(title, e) { this.error = { title, detail: e.message || String(e) }; },
+    fmt(n) { return (n ?? 0).toLocaleString(); },
+    pct(v, d = 1) { return ((v ?? 0) * 100).toFixed(d) + '%'; },
+    providerNameOf(p) { return { offline: 'Offline reasoner', anthropic: 'Anthropic model', openai: 'OpenAI-compatible model' }[p] || p || '...'; },
+    typeName(t) { return { phishing: 'Phishing', login: 'Sign-ins' }[t] || t; },
+    levelName(k) { return (LEVELS.find(l => l.k === k) || { name: k }).name; },
+    verdictName(v) { return { malicious: 'Malicious', benign: 'Benign', needs_human: 'Analyst review' }[v] || v; },
+    verdictIcon(v) { return { malicious: '#i-cross', benign: '#i-check', needs_human: '#i-person' }[v]; },
+    outcomeName(o) { return { agree: 'Agreed with analyst', disagree: 'Disagreed with analyst', deferred: 'Sent to analyst' }[o] || o; },
+    gradeName(g) { return { confirmed: 'Confirmed', inferred: 'Inferred', gap: 'Gap' }[g]; },
+    gradeIcon(g) { return { confirmed: '#i-full', inferred: '#i-half', gap: '#i-empty' }[g]; },
+    outcomeShort(o) { return { agree: 'Agreed', disagree: 'Disagreed', deferred: 'Sent to analyst' }[o] || o; },
+    handlingShort(r) { return { shadow: 'Recommended', drafted: 'Drafted for sign-off', executed: 'Executed', none: 'Awaiting analyst' }[r.action] || r.action; },
+    handling(r) {
+      const a = r.action;
+      return { shadow: 'Recommendation only', drafted: 'Response drafted for sign-off', executed: 'Response executed', none: 'Waiting for analyst' }[a] || a;
+    },
+    argstr(i) { const v = Object.values(i || {}); return v.length ? v.join(', ') : ''; },
+    ago(iso) {
+      const s = (Date.now() - new Date(iso).getTime()) / 1000;
+      if (s < 60) return 'just now';
+      if (s < 3600) return Math.floor(s / 60) + ' min ago';
+      if (s < 86400) return Math.floor(s / 3600) + ' h ago';
+      return new Date(iso).toLocaleDateString();
+    },
+    eventText(e) {
+      if (e.event === 'recommend') return `Recommended for ${this.levelName(e.to)}.`;
+      if (e.event === 'promote') return `Promoted to ${this.levelName(e.to)} by ${e.actor}.`;
+      return `Demoted to ${this.levelName(e.to)}: ${e.reason}`;
+    },
+
+    // Ladder lane
+    rungState(t, i) {
+      const cur = LEVELS.findIndex(l => l.k === t.level);
+      if (i === cur) return 'current';
+      if (i < cur) return 'passed';
+      if (LEVELS[i].k === t.recommendation) return 'ready';
+      return '';
+    },
+    gx(v) { const g = this.G; return g.l + (v - g.min) / (g.max - g.min) * (g.w - g.l - g.r); },
+    clampG(v) { return Math.min(this.G.max, Math.max(this.G.min, v)); },
+    bars(t) {
+      const target = t.recommendation || (t.next && t.next.level);
+      return Object.entries(BARS).map(([level, v]) => ({ level, v, name: this.levelName(level), target: level === target }));
+    },
+    lbAnchor(t) {
+      // Put the label on the side away from the target bar, and never past the right edge.
+      const lb = t.metrics.wilson_lb, bar = (this.bars(t).find(b => b.target) || {}).v;
+      if (lb > 0.975) return 'end';
+      return bar !== undefined && lb >= bar ? 'start' : 'end';
+    },
+    gaugeLabel(t) {
+      const next = t.next ? `, bar for ${this.levelName(t.next.level)} ${this.pct(t.next.criteria.min_lb, 0)}` : '';
+      return `${this.typeName(t.alert_type)}: observed agreement ${this.pct(t.metrics.agreement_rate)}, lower bound ${this.pct(t.metrics.wilson_lb)}${next}`;
+    },
+    blockers(t) {
+      const m = t.metrics, c = t.next.criteria, out = [];
+      if (m.wilson_lb < c.min_lb) out.push(`Lower bound is ${((c.min_lb - m.wilson_lb) * 100).toFixed(1)} points under the ${this.pct(c.min_lb, 0)} bar`);
+      if (m.decided < c.min_decided) out.push(`Needs ${this.fmt(c.min_decided)} decided alerts, has ${this.fmt(m.decided)}`);
+      if (m.critical_misses > c.max_critical_misses) out.push(`${m.critical_misses} real threat${m.critical_misses > 1 ? 's' : ''} called benign in this window`);
+      if (m.deferral_rate > c.max_deferral_rate) out.push(`Sends ${this.pct(m.deferral_rate)} to analysts, limit is ${this.pct(c.max_deferral_rate, 0)}`);
+      return out.length ? out : ['Waiting for the next evaluation'];
+    },
+
+    // Trend chart
+    cy(v) { const c = this.C; const vv = Math.min(c.max, Math.max(c.min, v)); return c.t + (1 - (vv - c.min) / (c.max - c.min)) * (c.h - c.t - c.b); },
+    nMax(type) { const p = this.tl[type] || []; return p.length ? p[p.length - 1].n : 1; },
+    cxFor(type, n) { const c = this.C; return c.l + (n / this.nMax(type)) * (c.w - c.l - c.r); },
+    line(type) { return (this.tl[type] || []).map(p => `${this.cxFor(type, p.n).toFixed(1)},${this.cy(p.window_lb).toFixed(1)}`).join(' '); },
+    xTicks(type) {
+      const max = this.nMax(type); if (max < 50) return [];
+      const step = max > 600 ? 200 : max > 300 ? 100 : 50;
+      const out = []; for (let x = step; x < max * 0.97; x += step) out.push(x); return out;
+    },
+    trendSummary(t) {
+      const p = this.tl[t.alert_type] || [];
+      if (!p.length) return 'Not enough alerts yet.';
+      return `From ${this.pct(p[0].window_lb)} to ${this.pct(p[p.length - 1].window_lb)} over ${this.fmt(p[p.length - 1].n)} alerts.`;
+    },
+    hover(ev, type) {
+      const pts = this.tl[type] || []; if (!pts.length) return;
+      const svg = ev.currentTarget, box = svg.getBoundingClientRect(), fig = svg.parentElement.getBoundingClientRect();
+      const scale = this.C.w / box.width, x = (ev.clientX - box.left) * scale;
+      let best = pts[0], bd = Infinity;
+      for (const p of pts) { const d = Math.abs(this.cxFor(type, p.n) - x); if (d < bd) { bd = d; best = p; } }
+      const px = this.cxFor(type, best.n), py = this.cy(best.window_lb);
+      this.tip = { type, n: best.n, v: best.window_lb, x: px, y: py, px: box.left - fig.left + px / scale, py: box.top - fig.top + py / scale };
+    },
+
+    // Data
+    async refresh() {
+      try {
+        this.s = await this.api('/api/summary');
+        await Promise.all(this.s.types.map(async t => {
+          const [tl, ev] = await Promise.all([this.api(`/api/timeline?alert_type=${t.alert_type}&bucket=25`), this.api(`/api/ladder/${t.alert_type}/events`)]);
+          this.tl[t.alert_type] = tl.points; this.ev[t.alert_type] = ev;
+        }));
+      } catch (e) { this.fail('Could not load the dashboard.', e); }
+    },
+    query(offset) {
+      const q = new URLSearchParams({ limit: 25, offset });
+      for (const [k, v] of Object.entries(this.f)) if (v) q.set(k, v);
+      return '/api/investigations?' + q;
+    },
+    async load() {
+      try { const r = await this.api(this.query(0)); this.rows = r; this.canMore = r.length === 25; }
+      catch (e) { this.fail('Could not load investigations.', e); }
+    },
+    async loadMore() {
+      try { const r = await this.api(this.query(this.rows.length)); this.rows = this.rows.concat(r); this.canMore = r.length === 25; }
+      catch (e) { this.fail('Could not load more investigations.', e); }
+    },
+    setFilter(k, v) { this.f[k] = v; this.load(); },
+    async replay(n) {
+      this.busy = true; this.error = null;
+      try {
+        await this.api('/api/replay', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ n }) });
+        await Promise.all([this.refresh(), this.load()]);
+      } catch (e) { this.fail('Replay failed.', e); }
+      finally { this.busy = false; }
+    },
+    async approve(type) {
+      this.approving = true; this.error = null;
+      try {
+        await this.api(`/api/ladder/${type}/approve`, { method: 'POST' });
+        if (this.$refs.repSheet.open) this.$refs.repSheet.close();
+        this.justApproved = null; await this.refresh(); this.justApproved = type;
+      } catch (e) { this.fail('Promotion was not approved.', e); await this.refresh(); }
+      finally { this.approving = false; }
+    },
+
+    // Sheets
+    backdropClose(ev, ref) { if (ev.target === this.$refs[ref]) this.$refs[ref].close(); },
+    async open(id) {
+      try {
+        this.d = await this.api('/api/investigations/' + id);
+        this.c = { verdict: this.d.human_verdict, note: '', done: false, saving: false };
+        this.flashRef = null;
+        this.$nextTick(() => { const el = this.$refs.invSheet; if (!el.open) el.showModal(); el.scrollTop = 0; });
+      } catch (e) { this.fail('Could not open that investigation.', e); }
+    },
+    showStep(ref) {
+      const el = document.getElementById('step-' + ref); if (!el) return;
+      el.open = true; this.flashRef = ref;
+      el.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    },
+    async submitCorrection() {
+      this.c.saving = true;
+      try {
+        await this.api(`/api/investigations/${this.d.id}/correct`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ verdict: this.c.verdict, note: this.c.note }) });
+        this.c.done = true; this.d.corrected = true;
+        await this.refresh(); this.load();
+      } catch (e) { this.fail('Correction was not saved.', e); }
+      finally { this.c.saving = false; }
+    },
+    openReport(type) {
+      const t = this.s.types.find(x => x.alert_type === type); if (!t) return;
+      const m = t.metrics;
+      const target = t.recommendation || (t.next ? t.next.level : t.level);
+      const c = t.next ? t.next.criteria : null;
+      const rows = [
+        { label: 'Agreement with analysts', value: this.pct(m.agreement_rate), req: '', pass: null },
+        { label: 'Agreement, 95% lower bound', value: this.pct(m.wilson_lb), req: c ? 'at least ' + this.pct(c.min_lb, 0) : '', pass: c ? m.wilson_lb >= c.min_lb : null },
+        { label: 'Decided alerts', value: this.fmt(m.decided), req: c ? 'at least ' + this.fmt(c.min_decided) : '', pass: c ? m.decided >= c.min_decided : null },
+        { label: 'Critical misses (threat called benign)', value: m.critical_misses, req: c ? 'at most ' + c.max_critical_misses : '', pass: c ? m.critical_misses <= c.max_critical_misses : null },
+        { label: 'Sent to analysts', value: this.pct(m.deferral_rate), req: c ? 'at most ' + this.pct(c.max_deferral_rate, 0) : '', pass: c ? m.deferral_rate <= c.max_deferral_rate : null },
+        { label: 'False alarms', value: this.fmt(m.false_alarms), req: '', pass: null },
+        { label: 'Grading rule interventions', value: this.pct(m.grading_violation_rate), req: '', pass: null },
+        { label: 'Verdicts citing analyst precedent', value: this.pct(m.precedent_rate), req: '', pass: null },
+      ];
+      this.rep = { alert_type: type, level: t.level, target, m, rows, ok: t.next ? t.next.ok : true, recommended: !!t.recommendation };
+      this.copied = false;
+      this.$nextTick(() => { const el = this.$refs.repSheet; if (!el.open) el.showModal(); el.scrollTop = 0; });
+    },
+    async copyReport(type) {
+      try { await navigator.clipboard.writeText(await this.api(`/api/ladder/${type}/report`)); this.copied = true; }
+      catch (e) { this.fail('Could not copy the report.', e); }
+    },
+  },
+  mounted() {
+    const mq = matchMedia('(max-width: 640px)');
+    const fit = () => { this.G.w = mq.matches ? 360 : 560; this.G.r = mq.matches ? 26 : 18; };
+    fit(); mq.addEventListener('change', fit);
+    this.refresh(); this.load();
+    setInterval(() => { if (!this.d && !this.rep && !this.busy && document.visibilityState === 'visible') this.refresh(); }, 20000);
+  },
 }).mount('#app');
 </script>
+<style>[v-cloak]{display:none}</style>
 </body>
 </html>
